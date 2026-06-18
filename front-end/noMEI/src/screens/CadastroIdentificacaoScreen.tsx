@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
-   SafeAreaView,
    ScrollView,
    StyleSheet,
    Text,
    TouchableOpacity,
    View,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button, Input } from "../components";
 import { colors, spacing } from "../theme";
@@ -17,6 +17,7 @@ type Props = RootStackScreenProps<"CadastroIdentificacao">;
 export function CadastroIdentificacaoScreen({
    navigation,
 }: Props): React.JSX.Element {
+   const insets = useSafeAreaInsets();
    const [nome, setNome] = useState("");
    const [email, setEmail] = useState("");
    const [emailError, setEmailError] = useState("");
@@ -74,8 +75,8 @@ export function CadastroIdentificacaoScreen({
    }
 
    return (
-      <SafeAreaView style={styles.safeArea}>
-         <View style={styles.header}>
+      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
+         <View style={[styles.header, { paddingTop: insets.top + spacing[4] }]}>
             <TouchableOpacity onPress={handleBackPress} activeOpacity={0.7}>
                <Ionicons name="arrow-back" size={24} color={colors.white} />
             </TouchableOpacity>

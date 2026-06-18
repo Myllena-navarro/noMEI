@@ -32,7 +32,7 @@ class ContratacaoService:
             cnae=cnae,
         )
 
-        pages = math.ceil(total / limit) if limit > 0 else 0
+        pages = max(1, math.ceil(total / limit)) if limit > 0 else 1
 
         return {
             "total": total,

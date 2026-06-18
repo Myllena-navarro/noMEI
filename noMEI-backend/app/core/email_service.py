@@ -5,7 +5,7 @@ from app.config import settings
 
 
 class EmailService:
-    def send_password_reset_email(self, to_email: str, reset_link: str) -> None:
+    def send_password_reset_email(self, to_email: str, reset_token: str) -> None:
         subject = "Redefinição de senha - noMEI"
 
         text_content = f"""
@@ -13,10 +13,11 @@ Olá,
 
 Recebemos uma solicitação para redefinir a sua senha.
 
-Acesse o link abaixo para cadastrar uma nova senha:
-{reset_link}
+Copie o código abaixo e cole no app, na tela de redefinição de senha:
 
-Este link expira em 15 minutos.
+{reset_token}
+
+Este código expira em 15 minutos.
 
 Se você não solicitou essa alteração, ignore este email.
 
@@ -30,27 +31,25 @@ Equipe noMEI
     <h2>Redefinição de senha</h2>
     <p>Recebemos uma solicitação para redefinir a sua senha.</p>
     <p>
-      Clique no botão abaixo para cadastrar uma nova senha:
+      Copie o código abaixo e cole no app, na tela de redefinição de senha:
     </p>
-    <p>
-      <a
-        href="{reset_link}"
-        style="
-          display: inline-block;
-          padding: 12px 20px;
-          background-color: #0d6efd;
-          color: white;
-          text-decoration: none;
-          border-radius: 6px;
-          font-weight: bold;
-        "
-      >
-        Redefinir senha
-      </a>
+    <p
+      style="
+        display: inline-block;
+        padding: 12px 20px;
+        background-color: #f1f3f5;
+        color: #0d6efd;
+        border-radius: 6px;
+        font-size: 18px;
+        font-weight: bold;
+        letter-spacing: 1px;
+        font-family: monospace;
+        word-break: break-all;
+      "
+    >
+      {reset_token}
     </p>
-    <p>Ou copie e cole este link no navegador:</p>
-    <p>{reset_link}</p>
-    <p><strong>Este link expira em 15 minutos.</strong></p>
+    <p><strong>Este código expira em 15 minutos.</strong></p>
     <p>Se você não solicitou essa alteração, ignore este email.</p>
     <p>Atenciosamente,<br>Equipe noMEI</p>
   </body>

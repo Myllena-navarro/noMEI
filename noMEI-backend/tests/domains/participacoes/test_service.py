@@ -52,7 +52,7 @@ def service():
 
 @pytest.mark.asyncio
 async def test_get_cnpj_raises_404_quando_usuario_nao_existe(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=None)
+    service.user_repository.get_by_id = AsyncMock(return_value=None)
     with pytest.raises(HTTPException) as exc_info:
         await service._validar_e_extrair_cnpj(USER_ID)
     assert exc_info.value.status_code == 404
@@ -60,7 +60,7 @@ async def test_get_cnpj_raises_404_quando_usuario_nao_existe(service):
 
 @pytest.mark.asyncio
 async def test_get_cnpj_raises_404_quando_cnpj_ausente(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value={"_id": USER_ID})
+    service.user_repository.get_by_id = AsyncMock(return_value={"_id": USER_ID})
     with pytest.raises(HTTPException) as exc_info:
         await service._validar_e_extrair_cnpj(USER_ID)
     assert exc_info.value.status_code == 404
@@ -68,7 +68,7 @@ async def test_get_cnpj_raises_404_quando_cnpj_ausente(service):
 
 @pytest.mark.asyncio
 async def test_get_cnpj_retorna_cnpj_correto(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     cnpj = await service._validar_e_extrair_cnpj(USER_ID)
     assert cnpj == CNPJ
 
@@ -83,7 +83,7 @@ async def test_listagem_usa_cnpj_do_jwt_nunca_do_cliente(service):
     Garantia de isolamento: CNPJ vem do banco via JWT,
     nunca de um parâmetro controlado pelo cliente.
     """
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.list_by_cnpj = AsyncMock(return_value=FAKE_PARTICIPACOES)
 
     await service.listar_participacoes(user_id=USER_ID, status=None)
@@ -93,7 +93,7 @@ async def test_listagem_usa_cnpj_do_jwt_nunca_do_cliente(service):
 
 @pytest.mark.asyncio
 async def test_listagem_sem_filtro_retorna_todos(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.list_by_cnpj = AsyncMock(return_value=FAKE_PARTICIPACOES)
 
     result = await service.listar_participacoes(user_id=USER_ID, status=None)
@@ -106,7 +106,7 @@ async def test_listagem_sem_filtro_retorna_todos(service):
 @pytest.mark.asyncio
 async def test_listagem_com_filtro_status_winner(service):
     """Com ?status=winner, o repositório deve receber o filtro correto."""
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.list_by_cnpj = AsyncMock(return_value=[FAKE_PARTICIPACOES[0]])
 
     result = await service.listar_participacoes(user_id=USER_ID, status="winner")
@@ -118,7 +118,7 @@ async def test_listagem_com_filtro_status_winner(service):
 
 @pytest.mark.asyncio
 async def test_listagem_retorna_lista_vazia_sem_erro(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.list_by_cnpj = AsyncMock(return_value=[])
 
     result = await service.listar_participacoes(user_id=USER_ID, status=None)
@@ -129,7 +129,7 @@ async def test_listagem_retorna_lista_vazia_sem_erro(service):
 
 @pytest.mark.asyncio
 async def test_listagem_mapeia_campos_do_documento_corretamente(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.list_by_cnpj = AsyncMock(return_value=[FAKE_PARTICIPACOES[0]])
 
     result = await service.listar_participacoes(user_id=USER_ID, status=None)
@@ -145,7 +145,7 @@ async def test_listagem_mapeia_campos_do_documento_corretamente(service):
 @pytest.mark.asyncio
 async def test_listagem_propaga_404_sem_cnpj_antes_do_repositorio(service):
     """Repositório NÃO deve ser chamado se o usuário não tem CNPJ."""
-    service.user_repository.get_user_by_id = AsyncMock(return_value={"_id": USER_ID})
+    service.user_repository.get_by_id = AsyncMock(return_value={"_id": USER_ID})
     service.repository.list_by_cnpj = AsyncMock()
 
     with pytest.raises(HTTPException) as exc_info:
@@ -161,7 +161,7 @@ async def test_listagem_propaga_404_sem_cnpj_antes_do_repositorio(service):
 
 @pytest.mark.asyncio
 async def test_dashboard_retorna_estrutura_correta(service):
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.get_dashboard_resumo = AsyncMock(return_value=FAKE_DASHBOARD_RAW)
 
     result = await service.resumo_dashboard(user_id=USER_ID)
@@ -178,7 +178,7 @@ async def test_dashboard_taxa_vitoria_zero_sem_finalizados(service):
         "resumo_status": [{"status": "open", "total": 3, "processos_ids": ["a", "b", "c"]}],
         "total_participacoes": [{"total": 3}],
     }
-    service.user_repository.get_user_by_id = AsyncMock(return_value=FAKE_USER)
+    service.user_repository.get_by_id = AsyncMock(return_value=FAKE_USER)
     service.repository.get_dashboard_resumo = AsyncMock(return_value=raw_data)
 
     result = await service.resumo_dashboard(user_id=USER_ID)

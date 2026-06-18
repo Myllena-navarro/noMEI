@@ -12,6 +12,7 @@ import { Header, BidCard, EmptyState, ErrorState, Input } from "../components";
 import { colors, spacing, textPresets } from "../theme";
 import { useLicitacoes } from "../hooks";
 import { useProfile } from "../context/ProfileContext";
+import { getMe } from "../services/authService";
 import type { MainTabScreenProps } from "../types";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -23,9 +24,14 @@ const BRAZIL_UFS = [
 type Props = MainTabScreenProps<"Inicio">;
 
 export function HomeScreen({ navigation }: Props): React.JSX.Element {
-  const { selectedCategories, selectedLabels } = useProfile();
+  const { selectedCategories, selectedLabels, nome, setNome } = useProfile();
 
   const [busca, setBusca] = useState("");
+
+  useEffect(() => {
+    getMe().then((user) => setNome(user.nome)).catch(() => { });
+  }, []);
+
   const [debouncedBusca, setDebouncedBusca] = useState("");
   const [selectedUf, setSelectedUf] = useState<string | null>(null);
 
@@ -84,15 +90,15 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
       <Header
         variant="default"
         notificationCount={3}
         onNotificationPress={() => navigation.navigate("Alertas")}
       />
-      
+
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.greeting}>Olá, João! 👋</Text>
+        <Text style={styles.greeting}>Olá, {nome ?? "..."}! 👋</Text>
         <Text style={styles.subtitle}>Bem-vindo ao seu painel de licitações.</Text>
 
         <Text style={styles.sectionTitle}>Resumo das suas participações</Text>
@@ -146,7 +152,7 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
               Todos
             </Text>
           </TouchableOpacity>
-          
+
           {BRAZIL_UFS.map((uf) => (
             <TouchableOpacity
               key={uf}
@@ -173,6 +179,9 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
                 navigation.navigate("DetalhesLicitacao", {
                   bidId: item.id,
                   bidTitle: item.title,
+                  agency: item.agency,
+                  value: item.value,
+                  status: item.status,
                 })
               }
             >
@@ -227,6 +236,9 @@ export function HomeScreen({ navigation }: Props): React.JSX.Element {
               navigation.navigate("DetalhesLicitacao", {
                 bidId: bid.id,
                 bidTitle: bid.title,
+                agency: bid.agency,
+                value: bid.value,
+                status: bid.status,
               })
             }
           />

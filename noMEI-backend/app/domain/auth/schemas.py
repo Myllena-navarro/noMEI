@@ -1,9 +1,18 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator
 
 
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(..., min_length=8)
+    nome: str | None = None
+    lgpd_accepted: bool
+
+    @field_validator("lgpd_accepted")
+    @classmethod
+    def lgpd_must_be_accepted(cls, v: bool) -> bool:
+        if not v:
+            raise ValueError("É necessário aceitar os termos da LGPD para criar uma conta")
+        return v
 
 
 class UserLogin(BaseModel):
@@ -40,3 +49,4 @@ class UserResponse(BaseModel):
     id: str = Field(..., alias="_id")
     email: EmailStr
     is_active: bool
+    nome: str | None = None

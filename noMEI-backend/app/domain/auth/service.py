@@ -3,7 +3,6 @@ from datetime import UTC, datetime, timedelta
 
 from jose import JWTError
 
-from app.config import settings
 from app.core.email_service import EmailService
 from app.core.security import (
     create_password_reset_token,
@@ -20,15 +19,17 @@ class AuthService:
         self.repository = UserRepository()
         self.email_service = EmailService()
 
-    async def registrar(self, email: str, password: str) -> dict:
+    async def registrar(self, email: str, password: str, nome: str | None = None, lgpd_accepted: bool = False) -> dict:
         if await self.repository.get_by_email(email):
             raise ValueError("Email já cadastrado")
 
         user_data = {
             "email": email,
             "password_hash": hash_password(password),
+            "nome": nome,
             "created_at": datetime.now(UTC),
             "is_active": True,
+            "lgpd_accepted_at": datetime.now(UTC) if lgpd_accepted else None,
             "reset_password_token_hash": None,
             "reset_password_expires_at": None,
         }
@@ -39,6 +40,8 @@ class AuthService:
         user = await self.repository.get_by_email(email)
         if not user or not verify_password(password, user["password_hash"]):
             raise ValueError("Credenciais inválidas")
+        if not user.get("is_active", True):
+            raise ValueError("Conta desativada")
 
         return create_tokens(user["_id"])
 
@@ -52,7 +55,10 @@ class AuthService:
             raise ValueError("Token inválido ou expirado")
 
         user_id = payload.get("sub")
-        if not user_id or not await self.repository.get_by_id(user_id):
+        user = await self.repository.get_by_id(user_id) if user_id else None
+        if not user:
+            raise ValueError("Token inválido ou expirado")
+        if not user.get("is_active", True):
             raise ValueError("Token inválido ou expirado")
 
         return create_tokens(user_id)
@@ -71,14 +77,13 @@ class AuthService:
                 expires_at=expires_at,
             )
 
-            reset_link = f"{settings.frontend_url}/reset-password?token={reset_token}"
             self.email_service.send_password_reset_email(
                 to_email=email,
-                reset_link=reset_link,
+                reset_token=reset_token,
             )
 
         return {
-            "message": "Se o email existir, um link de recuperação foi enviado."
+            "message": "Se o email existir, um código de recuperação foi enviado."
         }
 
     async def reset_password(self, token: str, new_password: str) -> dict:

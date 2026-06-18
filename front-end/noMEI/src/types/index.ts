@@ -71,6 +71,10 @@ export type RootStackParamList = {
   DetalhesLicitacao: {
     bidId: string;
     bidTitle: string;
+    /** Dados opcionais vindos da lista — exibidos imediatamente antes do fetch */
+    agency?: string;
+    value?: number;
+    status?: BidStatus;
   };
   Alertas: undefined;
 };

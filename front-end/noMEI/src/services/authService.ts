@@ -1,4 +1,6 @@
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import * as SecureStore from 'expo-secure-store';
+
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -6,6 +8,13 @@ export interface TokenResponse {
   access_token: string;
   refresh_token: string;
   token_type: string;
+}
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  is_active: boolean;
+  nome: string | null;
 }
 
 // ─── Error translation ────────────────────────────────────────────────────────
@@ -46,14 +55,30 @@ function parseApiError(data: unknown, fallback: string): string {
   return fallback;
 }
 
-// ─── In-memory token storage ──────────────────────────────────────────────────
+// ─── SecureStore keys ─────────────────────────────────────────────────────────
+
+const KEY_ACCESS = 'nomei_access_token';
+const KEY_REFRESH = 'nomei_refresh_token';
+
+// ─── In-memory cache (síncrono) + SecureStore (persistente) ──────────────────
 
 let _accessToken: string | null = null;
 let _refreshToken: string | null = null;
 
-export function storeTokens(tokens: TokenResponse): void {
+/**
+ * Chame uma vez na inicialização do app (ex: App.tsx) para restaurar a
+ * sessão gravada no SecureStore após o app ser fechado.
+ */
+export async function initAuth(): Promise<void> {
+  _accessToken = await SecureStore.getItemAsync(KEY_ACCESS);
+  _refreshToken = await SecureStore.getItemAsync(KEY_REFRESH);
+}
+
+export async function storeTokens(tokens: TokenResponse): Promise<void> {
   _accessToken = tokens.access_token;
   _refreshToken = tokens.refresh_token;
+  await SecureStore.setItemAsync(KEY_ACCESS, tokens.access_token);
+  await SecureStore.setItemAsync(KEY_REFRESH, tokens.refresh_token);
 }
 
 export function getAccessToken(): string | null {
@@ -64,9 +89,11 @@ export function getRefreshToken(): string | null {
   return _refreshToken;
 }
 
-export function clearTokens(): void {
+export async function clearTokens(): Promise<void> {
   _accessToken = null;
   _refreshToken = null;
+  await SecureStore.deleteItemAsync(KEY_ACCESS);
+  await SecureStore.deleteItemAsync(KEY_REFRESH);
 }
 
 // ─── Auth API calls ───────────────────────────────────────────────────────────
@@ -84,15 +111,15 @@ export async function login(email: string, password: string): Promise<TokenRespo
   }
 
   const tokens: TokenResponse = await response.json();
-  storeTokens(tokens);
+  await storeTokens(tokens);
   return tokens;
 }
 
-export async function register(email: string, password: string): Promise<TokenResponse> {
+export async function register(email: string, password: string, nome?: string, lgpd_accepted?: boolean): Promise<TokenResponse> {
   const response = await fetch(`${API_BASE_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, nome, lgpd_accepted: lgpd_accepted ?? false }),
   });
 
   if (!response.ok) {
@@ -113,12 +140,12 @@ export async function refreshTokens(refreshToken: string): Promise<TokenResponse
   });
 
   if (!response.ok) {
-    clearTokens();
+    await clearTokens();
     throw new Error('Sessão expirada. Faça login novamente.');
   }
 
   const tokens: TokenResponse = await response.json();
-  storeTokens(tokens);
+  await storeTokens(tokens);
   return tokens;
 }
 
@@ -146,4 +173,19 @@ export async function resetPassword(token: string, new_password: string): Promis
     const data = await response.json().catch(() => ({}));
     throw new Error(parseApiError(data, 'Erro ao redefinir senha'));
   }
+}
+
+export async function getMe(): Promise<UserResponse> {
+  const token = getAccessToken();
+  if (!token) throw new Error('Usuário não autenticado');
+
+  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error('Erro ao buscar dados do usuário');
+  }
+
+  return response.json();
 }

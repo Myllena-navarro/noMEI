@@ -18,3 +18,4 @@ class PerfilResponse(PerfilBase):
 
     id: str = Field(..., alias="_id")
     user_id: str | None = None
+    nome: str | None = None

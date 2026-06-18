@@ -1,6 +1,6 @@
 import { getAccessToken } from './authService';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +13,7 @@ export interface Alerta {
   message: string;
   date: string;
   read: boolean;
+  contratacao_id?: string | null;
 }
 
 export interface AlertaListResponse {
@@ -24,16 +25,11 @@ export interface AlertaListResponse {
 
 export async function fetchAlertas(): Promise<AlertaListResponse> {
   const token = getAccessToken();
+  if (!token) throw new Error('Usuário não autenticado');
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
-
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-
-  const response = await fetch(`${API_BASE_URL}/alertas/`, { headers });
+  const response = await fetch(`${API_BASE_URL}/alertas/`, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  });
 
   if (!response.ok) {
     throw new Error('Erro ao carregar notificações');
@@ -41,3 +37,30 @@ export async function fetchAlertas(): Promise<AlertaListResponse> {
 
   return response.json() as Promise<AlertaListResponse>;
 }
+
+/**
+ * PATCH /api/v1/alertas/{id}/read
+ * Marca um alerta individual como lido.
+ */
+export async function markAlertaRead(id: string): Promise<void> {
+  const token = getAccessToken();
+  if (!token) throw new Error('Usuário não autenticado');
+
+  const response = await fetch(`${API_BASE_URL}/alertas/${id}/read`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro ao marcar alerta como lido: ${response.status}`);
+  }
+}
+
+/**
+ * Marca múltiplos alertas como lidos em paralelo.
+ * Substitua por PATCH /alertas/read-all quando o endpoint existir no back-end.
+ */
+export async function markAllAlertasRead(ids: string[]): Promise<void> {
+  await Promise.all(ids.map(markAlertaRead));
+}
+

@@ -19,36 +19,10 @@ import type { MainTabScreenProps } from "../types";
 type Props = MainTabScreenProps<"Disputas">;
 type Tab = "open" | "closed";
 
-const OPEN_DISPUTAS: DisputaItem[] = [
-   {
-      id: "1",
-      title: "Fornecimento de Material de Escritório",
-      modality: "Pregão Eletrônico 012/2023 - Prefeitura Municipal",
-      status: "analysis",
-      updatedAt: "Atualizado há 2 horas",
-      progress: 45,
-   },
-   {
-      id: "2",
-      title: "Serviços de Manutenção Predial",
-      modality: "Tomada de Preços 045/2023 - Secretaria da Fazenda",
-      status: "sent",
-      updatedAt: "Atualizado ontem",
-      progress: 80,
-   },
-];
-
-const CLOSED_DISPUTAS: DisputaItem[] = [
-   {
-      id: "3",
-      title: "Aquisição de Equipamentos de TI",
-      modality: "Pregão Eletrônico 088/2023 - Tribunal de Justiça",
-      status: "winner",
-      updatedAt: "Atualizado há 3 dias",
-      progress: 100,
-      isWinner: true,
-   },
-];
+// TODO: substituir por chamada real a GET /api/v1/disputas/minhas quando o
+// endpoint for implementado no back-end.
+const OPEN_DISPUTAS: DisputaItem[] = [];
+const CLOSED_DISPUTAS: DisputaItem[] = [];
 
 export function DisputasScreen({ navigation }: Props): React.JSX.Element {
    const [activeTab, setActiveTab] = useState<Tab>("open");
@@ -114,11 +88,19 @@ export function DisputasScreen({ navigation }: Props): React.JSX.Element {
             showsVerticalScrollIndicator={false}
          >
             {disputas.length === 0 ? (
-               <EmptyState
-                  icon="checkmark-done-circle-outline"
-                  title="Nenhuma disputa encerrada"
-                  description="Suas disputas finalizadas aparecerão aqui."
-               />
+               activeTab === "open" ? (
+                  <EmptyState
+                     icon="file-tray-outline"
+                     title="Nenhuma disputa em aberto"
+                     description="Quando você participar de uma licitação, ela aparecerá aqui."
+                  />
+               ) : (
+                  <EmptyState
+                     icon="checkmark-done-circle-outline"
+                     title="Nenhuma disputa encerrada"
+                     description="Suas disputas finalizadas aparecerão aqui."
+                  />
+               )
             ) : (
                disputas.map((item) => (
                   <DisputaCard
@@ -138,6 +120,7 @@ export function DisputasScreen({ navigation }: Props): React.JSX.Element {
       </SafeAreaView>
    );
 }
+
 
 const styles = StyleSheet.create({
    safeArea: {

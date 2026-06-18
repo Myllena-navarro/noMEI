@@ -1,6 +1,6 @@
 import type { Bid, BidStatus } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
 
 // API Response Types
 
@@ -80,4 +80,18 @@ export async function fetchLicitacoes(
         total: data.total,
         pages: data.pages,
     };
+}
+
+export async function fetchLicitacaoById(id: string): Promise<Bid | null> {
+    const url = `${API_BASE_URL}/licitacoes/${id}`;
+    const response = await fetch(url);
+
+    if (response.status === 404) return null;
+
+    if (!response.ok) {
+        throw new Error(`Erro ao buscar licitação: ${response.status}`);
+    }
+
+    const data: LicitacaoItem = await response.json();
+    return mapToBid(data);
 }

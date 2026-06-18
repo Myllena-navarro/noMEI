@@ -1,7 +1,10 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+   ActivityIndicator,
+   Alert,
    ScrollView,
+   Share,
    StyleSheet,
    Text,
    TouchableOpacity,
@@ -10,6 +13,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Header, StatusBadge, Button } from "../components";
 import { colors, spacing, borderRadius, shadows, textPresets } from "../theme";
+import { fetchLicitacaoById } from "../services/licitacoesService";
+import type { Bid } from "../types";
 import type { RootStackScreenProps } from "../types";
 
 type Props = RootStackScreenProps<"DetalhesLicitacao">;
@@ -57,7 +62,59 @@ export function DetalhesLicitacaoScreen({
    navigation,
    route,
 }: Props): React.JSX.Element {
-   const { bidTitle } = route.params;
+   const { bidId, bidTitle, agency: agencyParam, value: valueParam, status: statusParam } = route.params;
+
+   const [bid, setBid] = useState<Bid | null>(null);
+   const [loading, setLoading] = useState(true);
+   const [error, setError] = useState<string | null>(null);
+   const [bookmarked, setBookmarked] = useState(false);
+
+   useEffect(() => {
+      setLoading(true);
+      fetchLicitacaoById(bidId)
+         .then((result) => {
+            setBid(result);
+         })
+         .catch((err) => {
+            setError(err instanceof Error ? err.message : 'Erro ao carregar licitação');
+         })
+         .finally(() => setLoading(false));
+   }, [bidId]);
+
+   const displayAgency = bid?.agency ?? agencyParam ?? '';
+   const displayValue = bid?.value ?? valueParam ?? null;
+   const displayStatus = bid?.status ?? statusParam ?? 'open';
+   const displayTitle = bid?.title ?? bidTitle;
+
+   const formattedValue = displayValue != null
+      ? displayValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+      : null;
+
+   function handleBookmark(): void {
+      setBookmarked((prev) => !prev);
+   }
+
+   async function handleShare(): Promise<void> {
+      const message = [
+         displayTitle,
+         displayAgency && `Órgão: ${displayAgency}`,
+         formattedValue && `Valor estimado: ${formattedValue}`,
+      ].filter(Boolean).join('\n');
+
+      try {
+         await Share.share({ message });
+      } catch {
+         // Usuário cancelou ou compartilhamento não disponível
+      }
+   }
+
+   function handleParticipar(): void {
+      Alert.alert(
+         'Em breve',
+         'A funcionalidade de participação em licitações estará disponível em breve!',
+         [{ text: 'OK' }]
+      );
+   }
 
    return (
       <SafeAreaView style={styles.safeArea} edges={["bottom"]}>
@@ -65,8 +122,9 @@ export function DetalhesLicitacaoScreen({
          <Header
             variant="detail"
             onBackPress={() => navigation.goBack()}
-            onBookmarkPress={() => {}}
-            onSharePress={() => {}}
+            onBookmarkPress={handleBookmark}
+            bookmarked={bookmarked}
+            onSharePress={handleShare}
          />
 
          <ScrollView
@@ -74,11 +132,28 @@ export function DetalhesLicitacaoScreen({
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
          >
+            {loading && (
+               <ActivityIndicator
+                  size="large"
+                  color={colors.primary}
+                  style={{ marginTop: spacing[8] }}
+               />
+            )}
+
+            {error && !loading && (
+               <View style={styles.errorBox}>
+                  <Ionicons name="alert-circle-outline" size={20} color={colors.error} />
+                  <Text style={styles.errorText}>{error}</Text>
+               </View>
+            )}
+
+            {!loading && (
+               <>
             {/* Seção 1*/}
             <View style={styles.heroSection}>
-               <StatusBadge status="open" showIcon />
+               <StatusBadge status={displayStatus} showIcon />
 
-               <Text style={styles.title}>{bidTitle}</Text>
+               <Text style={styles.title}>{displayTitle}</Text>
 
                <View style={styles.agencyRow}>
                   <Ionicons
@@ -87,14 +162,16 @@ export function DetalhesLicitacaoScreen({
                      color={colors.textSecondary}
                   />
                   <Text style={styles.agencyText}>
-                     {" "}
-                     Prefeitura Municipal de São Paulo
+                     {' '}
+                     {displayAgency || 'Órgão não informado'}
                   </Text>
                </View>
 
                <View style={styles.valueBlock}>
                   <Text style={styles.valueLabel}>VALOR ESTIMADO</Text>
-                  <Text style={styles.valueAmount}>R$ 14.500,00</Text>
+                  <Text style={styles.valueAmount}>
+                     {formattedValue ?? 'Não informado'}
+                  </Text>
                </View>
             </View>
 
@@ -127,6 +204,11 @@ export function DetalhesLicitacaoScreen({
                         <Text style={styles.bulletText}>{item.text}</Text>
                      </View>
                   ))}
+
+                  <View style={styles.mockBadge}>
+                     <Ionicons name="construct-outline" size={12} color={colors.textSecondary} />
+                     <Text style={styles.mockBadgeText}>Conteúdo personalizado em breve</Text>
+                  </View>
                </View>
 
                <TouchableOpacity style={styles.pdfLink} onPress={() => {}}>
@@ -194,15 +276,22 @@ export function DetalhesLicitacaoScreen({
                      </React.Fragment>
                   ))}
                </View>
+
+               <View style={styles.mockBadge}>
+                  <Ionicons name="construct-outline" size={12} color={colors.textSecondary} />
+                  <Text style={styles.mockBadgeText}>Checklist personalizado em breve via qualificação</Text>
+               </View>
             </View>
             <View style={{ height: spacing[4] }} />
+               </>
+            )}
          </ScrollView>
 
          {/* CTA Fixo */}
          <View style={styles.ctaContainer}>
             <Button
                label="Participar desta Licitação"
-               onPress={() => {}}
+               onPress={handleParticipar}
                variant="primary"
                size="lg"
                fullWidth
@@ -372,6 +461,33 @@ const styles = StyleSheet.create({
       height: 1,
       backgroundColor: colors.border,
       marginHorizontal: spacing[4],
+   },
+
+   errorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      backgroundColor: '#FEE2E2',
+      borderRadius: borderRadius.md,
+      padding: spacing[4],
+      margin: spacing[4],
+   },
+   errorText: {
+      ...textPresets.bodySm,
+      color: colors.error,
+      flex: 1,
+   },
+   mockBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[1],
+      marginTop: spacing[2],
+      alignSelf: 'flex-start',
+   },
+   mockBadgeText: {
+      ...textPresets.bodySm,
+      color: colors.textSecondary,
+      fontStyle: 'italic',
    },
 
    // CTA

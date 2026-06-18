@@ -1,10 +1,10 @@
 import React from "react";
 import {
-   SafeAreaView,
    StyleSheet,
    Text,
    View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "../components";
 import { colors, spacing } from "../theme";

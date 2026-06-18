@@ -26,9 +26,6 @@ class Settings(BaseSettings):
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
 
-    # Frontend
-    frontend_url: str = "http://localhost:3000"
-
     # SMTP (optional — email features disabled if not set)
     smtp_host: str | None = None
     smtp_port: int = 465

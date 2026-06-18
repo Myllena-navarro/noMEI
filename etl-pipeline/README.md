@@ -118,9 +118,7 @@ etl-pipeline/
 │   └── docker-compose.yml
 ├── docs/
 │   ├── arquitetura_etl_pipeline.md
-│   ├── explicacao_aplicacao_noMEI.md
 │   ├── seguranca.md
-│   └── testes_funcionalidade_aplicacao.md
 ├── logs/
 │   └── audit_log.jsonl
 ├── mcp_service/

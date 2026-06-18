@@ -44,7 +44,7 @@ class AlertaRepository:
             {"_id": oid, "user_id": user_id},
             {"$set": {"read": True}},
         )
-        return result.modified_count > 0
+        return result.matched_count > 0
 
     async def mark_all_as_read(self, user_id: str) -> int:
         result = await self.collection.update_many(

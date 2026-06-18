@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Header, EmptyState } from "../components";
 import { colors, spacing, borderRadius, shadows, textPresets } from "../theme";
-import { fetchAlertas } from "../services/alertasService";
+import { fetchAlertas, markAlertaRead, markAllAlertasRead } from "../services/alertasService";
 import type { Alerta } from "../services/alertasService";
 import type { RootStackScreenProps } from "../types";
 
@@ -37,6 +37,7 @@ export function AlertasScreen({ navigation }: Props): React.JSX.Element {
    const [alertas, setAlertas] = useState<Alerta[]>([]);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState("");
+   const [markingAll, setMarkingAll] = useState(false);
 
    const load = useCallback(async () => {
       setLoading(true);
@@ -55,6 +56,40 @@ export function AlertasScreen({ navigation }: Props): React.JSX.Element {
       void load();
    }, [load]);
 
+   const unreadCount = alertas.filter((a) => !a.read).length;
+
+   async function handleMarkRead(id: string): Promise<void> {
+      // Atualização otimista
+      setAlertas((prev) => prev.map((a) => a.id === id ? { ...a, read: true } : a));
+      try {
+         await markAlertaRead(id);
+      } catch {
+         // Reverter em caso de erro
+         setAlertas((prev) => prev.map((a) => a.id === id ? { ...a, read: false } : a));
+         Alert.alert('Erro', 'Não foi possível marcar o alerta como lido.');
+      }
+   }
+
+   async function handleMarkAllRead(): Promise<void> {
+      const unreadIds = alertas.filter((a) => !a.read).map((a) => a.id);
+      if (unreadIds.length === 0) return;
+
+      setMarkingAll(true);
+      // Atualização otimista
+      setAlertas((prev) => prev.map((a) => ({ ...a, read: true })));
+      try {
+         await markAllAlertasRead(unreadIds);
+      } catch {
+         // Reverter
+         setAlertas((prev) => prev.map((a) =>
+            unreadIds.includes(a.id) ? { ...a, read: false } : a
+         ));
+         Alert.alert('Erro', 'Não foi possível marcar todos como lidos.');
+      } finally {
+         setMarkingAll(false);
+      }
+   }
+
    return (
       <SafeAreaView style={styles.safeArea}>
          <Header
@@ -67,16 +102,24 @@ export function AlertasScreen({ navigation }: Props): React.JSX.Element {
             style={styles.scroll}
             contentContainerStyle={styles.content}
          >
-            <View style={styles.calendarPlaceholder}>
-               <Text style={styles.calendarTitle}>
-                  📅 Calendário Semanal — Sprint 3
-               </Text>
-               <Text style={styles.calendarSubtitle}>
-                  Visualização de prazos e compromissos da semana
-               </Text>
-            </View>
 
             <Text style={styles.sectionTitle}>Recentes</Text>
+
+            {unreadCount > 0 && (
+               <TouchableOpacity
+                  style={styles.markAllBtn}
+                  onPress={handleMarkAllRead}
+                  disabled={markingAll}
+                  activeOpacity={0.7}
+               >
+                  {markingAll ? (
+                     <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                     <Ionicons name="checkmark-done-outline" size={16} color={colors.primary} />
+                  )}
+                  <Text style={styles.markAllText}>Marcar tudo como lido ({unreadCount})</Text>
+               </TouchableOpacity>
+            )}
 
             {loading && (
                <ActivityIndicator
@@ -107,7 +150,12 @@ export function AlertasScreen({ navigation }: Props): React.JSX.Element {
             {!loading && !error && alertas.map((alert) => {
                const config = ALERT_TYPE_CONFIG[alert.type];
                return (
-                  <View key={alert.id} style={[styles.alertCard, !alert.read && styles.alertCardUnread]}>
+                  <TouchableOpacity
+                     key={alert.id}
+                     style={[styles.alertCard, !alert.read && styles.alertCardUnread]}
+                     onPress={() => { if (!alert.read) void handleMarkRead(alert.id); }}
+                     activeOpacity={alert.read ? 1 : 0.75}
+                  >
                      <View
                         style={[
                            styles.alertIcon,
@@ -132,7 +180,7 @@ export function AlertasScreen({ navigation }: Props): React.JSX.Element {
                         </Text>
                      </View>
                      {!alert.read && <View style={styles.unreadDot} />}
-                  </View>
+                  </TouchableOpacity>
                );
             })}
          </ScrollView>
@@ -214,6 +262,21 @@ const styles = StyleSheet.create({
    },
    loader: {
       marginTop: spacing[8],
+   },
+   markAllBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing[2],
+      alignSelf: 'flex-end',
+      paddingVertical: spacing[2],
+      paddingHorizontal: spacing[3],
+      backgroundColor: colors.primaryLight,
+      borderRadius: borderRadius.full,
+   },
+   markAllText: {
+      ...textPresets.bodySm,
+      color: colors.primary,
+      fontWeight: '600',
    },
    errorContainer: {
       alignItems: "center",

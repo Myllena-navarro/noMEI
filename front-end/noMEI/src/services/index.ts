@@ -19,3 +19,6 @@ export type { TokenResponse } from './authService';
 
 export { fetchAlertas } from './alertasService';
 export type { Alerta, AlertaListResponse, AlertaType } from './alertasService';
+
+export { fetchMinhaPerfil, saveMinhaPerfil } from './perfilService';
+export type { PerfilResponse, PerfilCreate } from './perfilService';

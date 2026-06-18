@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
    ActivityIndicator,
-   SafeAreaView,
    ScrollView,
    StyleSheet,
    Text,
@@ -9,14 +8,18 @@ import {
    View,
    Image,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Input } from "../components";
 import { colors, spacing } from "../theme";
 import { login } from "../services";
+import { fetchMinhaPerfil } from "../services/perfilService";
+import { useProfile } from "../context/ProfileContext";
 import type { RootStackScreenProps } from "../types";
 
 type Props = RootStackScreenProps<"Onboarding">;
 
 export function OnboardingScreen({ navigation }: Props): React.JSX.Element {
+   const { setCnpj } = useProfile();
    const [email, setEmail] = useState("");
    const [password, setPassword] = useState("");
    const [showPassword, setShowPassword] = useState(false);
@@ -34,7 +37,13 @@ export function OnboardingScreen({ navigation }: Props): React.JSX.Element {
       setIsLoading(true);
       try {
          await login(email, password);
-         navigation.navigate("MainTabs");
+         const perfil = await fetchMinhaPerfil().catch(() => null);
+         if (perfil?.cnpj) {
+            setCnpj(perfil.cnpj);
+            navigation.navigate("MainTabs");
+         } else {
+            navigation.navigate("ProfileSetup", {});
+         }
       } catch (err) {
          setError(err instanceof Error ? err.message : "Erro ao fazer login");
       } finally {

@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  SafeAreaView,
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,10 +8,12 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components';
 import { colors, spacing, borderRadius, shadows, textPresets } from '../theme';
 import { useProfile } from '../context/ProfileContext';
+import { fetchMinhaPerfil, saveMinhaPerfil } from '../services/perfilService';
+import { getMe } from '../services/authService';
 import type { RootStackScreenProps } from '../types';
 
 type Props = RootStackScreenProps<"ProfileSetup">;
@@ -31,20 +33,35 @@ const INTEREST_AREAS = [
   { id: 'concurso', label: 'Concurso', icon: 'trophy-outline' as const, category: 'Concurso' },
 ];
 
-const GOV_BR_DATA = {
-   name: "João Silva",
-   cnpj: "12.345.678/0001-90",
-   cnae: "6201-5/00 — Desenvolvimento de programas de computador sob encomenda",
-};
-
 export function ConfiguracaoPerfilScreen({ navigation, route }: Props): React.JSX.Element {
   const insets = useSafeAreaInsets();
   const { setSelectedAreas: saveToContext, setCnpj } = useProfile();
   const [selectedAreas, setSelectedAreas] = useState<string[]>(['tech', 'office']);
 
   const { nome, email, cpfCnpj } = route.params || {};
-  const nameToDisplay = nome || GOV_BR_DATA.name;
-  const cnpjToDisplay = cpfCnpj || GOV_BR_DATA.cnpj;
+
+  // Dados vindos da API (quando não chegam por params — fluxo de login)
+  const [nameToDisplay, setNameToDisplay] = useState<string>(nome ?? '');
+  const [cnpjToDisplay, setCnpjToDisplay] = useState<string>(cpfCnpj ?? '');
+  const [cnaeToDisplay, setCnaeToDisplay] = useState<string>('');
+  const [loadingGovData, setLoadingGovData] = useState(!nome && !cpfCnpj);
+
+  useEffect(() => {
+    // Se os dados já vieram por params (fluxo de cadastro), não precisa buscar
+    if (nome && cpfCnpj) return;
+
+    setLoadingGovData(true);
+    Promise.all([
+      getMe().catch(() => null),
+      fetchMinhaPerfil().catch(() => null),
+    ]).then(([user, perfil]) => {
+      if (user?.nome) setNameToDisplay(user.nome);
+      if (perfil?.cnpj) setCnpjToDisplay(perfil.cnpj);
+      if (perfil?.cnae) setCnaeToDisplay(perfil.cnae);
+    }).finally(() => {
+      setLoadingGovData(false);
+    });
+  }, []);
 
    function toggleArea(id: string): void {
       setSelectedAreas((prev) =>
@@ -59,8 +76,18 @@ export function ConfiguracaoPerfilScreen({ navigation, route }: Props): React.JS
       .map((area) => area.category as string);
     const labels = selected.map((area) => area.label);
     saveToContext(selectedAreas, categories, labels);
-    setCnpj(cnpjToDisplay);
-    
+
+    // Só persiste se tiver CNPJ real — nunca salva string vazia ou dado falso
+    if (cnpjToDisplay) {
+      setCnpj(cnpjToDisplay);
+      saveMinhaPerfil({
+        cnpj: cnpjToDisplay,
+        cnae: cnaeToDisplay || undefined,
+      }).catch(() => {
+        // silently ignore — cnpj already set in context
+      });
+    }
+
     if (nome) {
       navigation.navigate('CadastroSucesso');
     } else {
@@ -69,7 +96,7 @@ export function ConfiguracaoPerfilScreen({ navigation, route }: Props): React.JS
   }
 
    return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
          {/* Header */}
          <View style={[styles.header, { paddingTop: insets.top + spacing[2] }]}>
             <TouchableOpacity
@@ -103,33 +130,43 @@ export function ConfiguracaoPerfilScreen({ navigation, route }: Props): React.JS
                </View>
 
                <View style={styles.card}>
-                  <DataRow
-                     icon="person-outline"
-                     label="Nome"
-                     value={nameToDisplay}
-                  />
-                  {!!email && (
+                  {loadingGovData ? (
+                     <ActivityIndicator
+                        size="small"
+                        color={colors.primary}
+                        style={{ paddingVertical: spacing[4] }}
+                     />
+                  ) : (
                      <>
+                        <DataRow
+                           icon="person-outline"
+                           label="Nome"
+                           value={nameToDisplay || 'Não informado'}
+                        />
+                        {!!email && (
+                           <>
+                              <View style={styles.divider} />
+                              <DataRow
+                                 icon="mail-outline"
+                                 label="E-mail"
+                                 value={email}
+                              />
+                           </>
+                        )}
                         <View style={styles.divider} />
                         <DataRow
-                           icon="mail-outline"
-                           label="E-mail"
-                           value={email}
+                           icon="business-outline"
+                           label="CNPJ"
+                           value={cnpjToDisplay || 'Não informado'}
+                        />
+                        <View style={styles.divider} />
+                        <DataRow
+                           icon="grid-outline"
+                           label="CNAE"
+                           value={cnaeToDisplay || 'Não informado'}
                         />
                      </>
                   )}
-                  <View style={styles.divider} />
-                  <DataRow
-                     icon="business-outline"
-                     label="CNPJ"
-                     value={cnpjToDisplay}
-                  />
-                  <View style={styles.divider} />
-                  <DataRow
-                     icon="grid-outline"
-                     label="CNAE"
-                     value={GOV_BR_DATA.cnae}
-                  />
                </View>
 
                <View style={styles.govbrBadge}>

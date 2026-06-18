@@ -35,6 +35,8 @@ interface HeaderDetailProps {
    onBackPress: () => void;
    onBookmarkPress?: () => void;
    onSharePress?: () => void;
+   /** true = ícone bookmark preenchido; false = outline */
+   bookmarked?: boolean;
 }
 
 interface HeaderModalProps {
@@ -83,9 +85,9 @@ export function Header(props: HeaderProps): React.JSX.Element {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                >
                   <Ionicons
-                     name="bookmark-outline"
+                     name={props.bookmarked ? "bookmark" : "bookmark-outline"}
                      size={22}
-                     color={colors.textPrimary}
+                     color={props.bookmarked ? colors.primary : colors.textPrimary}
                   />
                </TouchableOpacity>
                <TouchableOpacity

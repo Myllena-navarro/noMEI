@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Header } from '../components';
 import { colors, spacing, borderRadius, shadows, textPresets } from '../theme';
+import { clearTokens, getMe } from '../services/authService';
+import { fetchMinhaPerfil } from '../services/perfilService';
 import type { MainTabScreenProps } from '../types';
 
 type Props = MainTabScreenProps<'Perfil'>;
@@ -16,23 +18,59 @@ const MENU_ITEMS = [
   { id: 'help', icon: 'help-circle-outline' as const, label: 'Ajuda e suporte', subtitle: 'FAQ, chat, termos' },
 ];
 
-export function PerfilScreen({ navigation: _navigation }: Props): React.JSX.Element {
+function getInitials(nome: string | null): string {
+  if (!nome) return '?';
+  const parts = nome.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+}
+
+export function PerfilScreen({ navigation }: Props): React.JSX.Element {
+  const [nome, setNome] = useState<string | null>(null);
+  const [cnpj, setCnpj] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      getMe().catch(() => null),
+      fetchMinhaPerfil().catch(() => null),
+    ]).then(([user, perfil]) => {
+      setNome(user?.nome ?? null);
+      setCnpj(perfil?.cnpj ?? null);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  function handleLogout(): void {
+    clearTokens();
+    navigation.getParent()?.reset({ index: 0, routes: [{ name: 'Onboarding' }] });
+  }
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
       <Header variant="default" notificationCount={0} />
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarInitials}>JS</Text>
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={styles.avatarInitials}>{getInitials(nome)}</Text>
+            )}
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>João Silva</Text>
-            <Text style={styles.profileCnpj}>12.345.678/0001-90</Text>
-            <View style={styles.govbrBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={colors.success} />
-              <Text style={styles.govbrText}>Verificado pelo Gov.br</Text>
-            </View>
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <>
+                <Text style={styles.profileName}>{nome ?? 'Usuário'}</Text>
+                <Text style={styles.profileCnpj}>{cnpj ?? 'CNPJ não informado'}</Text>
+                <View style={styles.govbrBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color={colors.success} />
+                  <Text style={styles.govbrText}>Verificado pelo Gov.br</Text>
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -54,7 +92,7 @@ export function PerfilScreen({ navigation: _navigation }: Props): React.JSX.Elem
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.7} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={18} color={colors.error} />
           <Text style={styles.logoutText}>Sair da conta</Text>
         </TouchableOpacity>
@@ -64,6 +102,7 @@ export function PerfilScreen({ navigation: _navigation }: Props): React.JSX.Elem
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {
